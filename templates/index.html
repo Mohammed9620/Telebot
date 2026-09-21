@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Job Feed Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Header -->
+        <header class="header">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                </div>
+                <div>
+                    <h1>Forwarded Jobs Dashboard</h1>
+                    <p class="subtitle">Real-time repository of filtered tech opportunities from Telegram</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="/" class="btn btn-secondary btn-sm">Refresh</a>
+                <a href="/api/jobs" target="_blank" class="btn btn-outline btn-sm">API (JSON)</a>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon stat-icon-blue">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Total Forwarded</span>
+                    <span class="stat-value">{{ stats.total_jobs }}</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon stat-icon-purple">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Tech Categories</span>
+                    <span class="stat-value">{{ stats.total_categories }}</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon stat-icon-green">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Latest Activity</span>
+                    <span class="stat-value stat-value-sm">
+                        {% if stats.latest_job_time %}
+                            {{ stats.latest_job_time[:19].replace('T', ' ') }}
+                        {% else %}
+                            No jobs yet
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Filter Controls -->
+        <section class="card filter-card">
+            <form method="GET" action="/" class="filter-form">
+                <div class="filter-group">
+                    <label for="category">Category</label>
+                    <select name="category" id="category" class="form-control">
+                        <option value="">All Categories</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="start_date">From Date</label>
+                    <input type="date" name="start_date" id="start_date" class="form-control" value="{{ start_date }}">
+                </div>
+
+                <div class="filter-group">
+                    <label for="end_date">To Date</label>
+                    <input type="date" name="end_date" id="end_date" class="form-control" value="{{ end_date }}">
+                </div>
+
+                <div class="filter-actions">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    {% if selected_category or start_date or end_date %}
+                        <a href="/" class="btn btn-ghost">Clear Filters</a>
+                    {% endif %}
+                </div>
+            </form>
+        </section>
+
+        <!-- Jobs Table -->
+        <section class="card table-card">
+            <div class="table-header-row">
+                <h2>Saved Opportunities <span class="badge badge-count">{{ jobs|length }} shown</span></h2>
+            </div>
+
+            {% if jobs %}
+                <div class="table-responsive">
+                    <table class="jobs-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">#</th>
+                                <th style="width: 170px;">Timestamp</th>
+                                <th style="width: 190px;">Category</th>
+                                <th style="width: 220px;">Source Group</th>
+                                <th>Message Snippet</th>
+                                <th style="width: 100px; text-align: right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for job in jobs %}
+                                <tr>
+                                    <td class="cell-id">#{{ job.id }}</td>
+                                    <td class="cell-time">
+                                        <span class="time-main">{{ job.timestamp[:10] }}</span>
+                                        <span class="time-sub">{{ job.timestamp[11:19] }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="category-pill pill-{{ job.category|lower|replace(' ', '-')|replace('&', 'and') }}">
+                                            {{ job.category }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="group-tag" title="{{ job.source_group }}">
+                                            {{ job.source_group }}
+                                        </span>
+                                    </td>
+                                    <td class="cell-snippet">
+                                        <div class="snippet-text">{{ job.message_text }}</div>
+                                    </td>
+                                    <td style="text-align: right;">
+                                        <button class="btn btn-sm btn-outline view-btn"
+                                                onclick='openJobModal({{ job|tojson }})'>
+                                            View Full
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    </div>
+                    <h3>No jobs found</h3>
+                    <p>
+                        {% if selected_category or start_date or end_date %}
+                            No forwarded jobs match your active filters. Try resetting the filters.
+                        {% else %}
+                            The bot has not forwarded any tech jobs yet. Forwarded jobs will appear here in real-time.
+                        {% endif %}
+                    </p>
+                    {% if selected_category or start_date or end_date %}
+                        <a href="/" class="btn btn-secondary">Reset Filters</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <!-- Message Detail Modal -->
+    <div id="jobModal" class="modal-overlay" onclick="closeJobModal(event)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div>
+                    <span id="modalCategory" class="category-pill"></span>
+                    <h3 id="modalTitle" style="margin-top: 8px;">Job Details</h3>
+                </div>
+                <button class="modal-close-btn" onclick="closeJobModal()">&times;</button>
+            </div>
+            <div class="modal-meta">
+                <div><strong>Group:</strong> <span id="modalGroup"></span></div>
+                <div><strong>Timestamp:</strong> <span id="modalTime"></span></div>
+            </div>
+            <div class="modal-body">
+                <pre id="modalText" class="modal-pre"></pre>
+            </div>
+            <div class="modal-footer">
+                <button id="copyBtn" class="btn btn-secondary" onclick="copyModalText()">Copy Message</button>
+                <button class="btn btn-primary" onclick="closeJobModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openJobModal(job) {
+            document.getElementById('modalCategory').textContent = job.category;
+            document.getElementById('modalCategory').className = 'category-pill pill-' +
+                job.category.toLowerCase().replace(/\s+/g, '-').replace(/&/g, 'and');
+            document.getElementById('modalTitle').textContent = 'Job #' + job.id;
+            document.getElementById('modalGroup').textContent = job.source_group;
+            document.getElementById('modalTime').textContent = job.timestamp.replace('T', ' ');
+            document.getElementById('modalText').textContent = job.message_text;
+            document.getElementById('jobModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeJobModal(event) {
+            document.getElementById('jobModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+            document.getElementById('copyBtn').textContent = 'Copy Message';
+        }
+
+        function copyModalText() {
+            const text = document.getElementById('modalText').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('copyBtn');
+                btn.textContent = 'Copied!';
+                setTimeout(() => { btn.textContent = 'Copy Message'; }, 2000);
+            });
+        }
+
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeJobModal();
+        });
+    </script>
+</body>
+</html>

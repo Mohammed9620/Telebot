@@ -1,0 +1,16 @@
+# Environment variables
+.env
+
+# Telethon session files
+*.session
+*.session-journal
+
+# SQLite databases
+*.db
+
+# Python bytecode and cache
+__pycache__/
+*.pyc
+
+# Stray Windows device file
+nul
